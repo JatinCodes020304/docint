@@ -932,3 +932,55 @@ def extract_document(ocr: OCRResult, document_type: str) -> dict[str, Any]:
         len(data["_grounding_warnings"]),
     )
     return data
+
+def extract_document_vision(raw: bytes, content_type: str, document_type: str, audit_context: str | None = None) -> dict[str, Any]:
+    """Extract directly from original page image(s) with Gemini Vision.
+
+    This is the primary path for scanned PDFs/JPG/PNG. It deliberately does
+    not run Tesseract first. The caller can fall back to run_ocr()+
+    extract_document() if Vision fails.
+    """
+    if document_type not in _REQUIRED_GUIDANCE:
+        raise ExtractionError(f"Unsupported document_type '{document_type}'.")
+    if not getattr(settings, "GEMINI_API_KEY", ""):
+        raise ExtractionError("Gemini API key is not configured for Vision extraction.")
+
+    from app.services.vision_extraction_service import call_gemini_vision
+
+    try:
+        logger.info("Starting Gemini Vision direct extraction for document_type=%s", document_type)
+        raw_text, used_model = call_gemini_vision(
+            raw=raw, content_type=content_type, document_type=document_type, ocr=None, audit_context=audit_context
+        )
+        payload = json.loads(_clean_json_text(raw_text))
+        extraction = GeminiExtraction.model_validate(payload)
+        _ensure_required_fields(extraction, document_type)
+    except (json.JSONDecodeError, PydanticValidationError) as exc:
+        logger.exception("Gemini Vision returned invalid structured output")
+        raise ExtractionError("Vision extraction returned invalid structured output.") from exc
+    except Exception as exc:
+        logger.exception("Gemini Vision direct extraction failed")
+        raise ExtractionError("Vision extraction failed or timed out.") from exc
+
+    data: dict[str, Any] = {}
+    for field in extraction.fields:
+        key = _canonical_name(field.name)
+        if not key or key in data:
+            continue
+        data[key] = {
+            "value": field.value,
+            "evidence": field.evidence.model_dump(),
+            "page_number": field.evidence.page_number,
+        }
+
+    data["line_items"] = [item.model_dump() for item in extraction.line_items]
+    data["tables"] = [table.model_dump() for table in extraction.tables]
+    # There is no OCR text in this fast path, so text-substring grounding cannot
+    # be run here. Evidence remains image-grounded and page-numbered by Vision.
+    data["_grounding_warnings"] = []
+    logger.info(
+        "Gemini Vision direct extraction succeeded with model=%s fields=%d line_items=%d tables=%d",
+        used_model, len(extraction.fields), len(extraction.line_items), len(extraction.tables),
+    )
+    return data
+

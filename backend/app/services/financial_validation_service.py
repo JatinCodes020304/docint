@@ -54,7 +54,7 @@ def _tolerance(reported: float) -> float:
     return max(settings.VALIDATION_ABS_TOLERANCE, abs(reported) * settings.VALIDATION_PCT_TOLERANCE)
 
 
-def _make_check(name: str, formula: str, operands: dict[str, float | None], calculated: float | None, reported: float | None) -> ValidationCheck:
+def _make_check(name: str, formula: str, operands: dict[str, float | None], calculated: float | None, reported: float | None, *, tolerance: float | None = None) -> ValidationCheck:
     # If all operands exist we may deterministically compute the formula even when the
     # document does not report a comparison value. In that case the check remains
     # NOT_APPLICABLE, but exposing calculated_value is useful and does not invent data.
@@ -67,7 +67,8 @@ def _make_check(name: str, formula: str, operands: dict[str, float | None], calc
             status="NOT_APPLICABLE",
         )
     variance = safe_calculated - reported
-    status = "PASS" if abs(variance) <= _tolerance(reported) else "FAIL"
+    allowed = _tolerance(reported) if tolerance is None else tolerance
+    status = "PASS" if abs(variance) <= allowed else "FAIL"
     return ValidationCheck(
         name=name, formula=formula, operands=operands,
         calculated_value=safe_calculated, reported_value=reported,
@@ -93,41 +94,75 @@ def _invoice(extracted: dict[str, Any]) -> list[ValidationCheck]:
     for idx, item in enumerate(items, start=1):
         q, u, amount = _num(item.get("quantity")), _num(item.get("unit_price")), _num(item.get("amount"))
         calc = q * u if q is not None and u is not None else None
+        # Line-item arithmetic should be much stricter than statement-level
+        # reconciliation. A 0.5% tolerance can incorrectly accept OCR slips such
+        # as 29.06 vs a visibly printed 29.00. Allow only the configured absolute
+        # money tolerance (normally one cent) for quantity × unit-price checks.
         checks.append(_make_check(
             f"line_item_{idx}_quantity_x_unit_price",
             "quantity * unit_price",
             {"quantity": q, "unit_price": u}, calc, amount,
+            tolerance=settings.VALIDATION_ABS_TOLERANCE,
         ))
 
     amounts = [_num(item.get("amount")) for item in items]
     amounts_present = bool(amounts) and all(v is not None for v in amounts)
     line_sum = sum(amounts) if amounts_present else None
-    subtotal = _num(_raw(extracted, "subtotal", "taxable_amount"))
-    total = _num(_raw(extracted, "total_amount", "grand_total", "amount_due"))
-    target = subtotal if subtotal is not None else total
+
+    # Reconcile line totals without treating tax-summary net amounts as an
+    # invoice subtotal. `subtotal` is used only when the document explicitly
+    # exposes a subtotal field. `net_amount` / `taxable_amount` remain valid
+    # bases for the separate tax-to-total equation below, but they are not
+    # automatically assumed to be the item-total target. This avoids the common
+    # GST-inclusive receipt failure: items sum to the final inclusive total while
+    # a GST summary separately prints a pre-tax Net Amt.
+    explicit_subtotal = _num(_raw(extracted, "subtotal"))
+    pre_tax = _num(_raw(extracted, "pre_tax_amount", "net_amount", "taxable_amount"))
+    total = _num(_raw(extracted, "total_amount", "grand_total", "amount_due", "total_inclusive_gst", "total_including_tax"))
+
+    # Prefer an explicitly printed subtotal. If none exists, the final printed
+    # total is the applicable reconciliation target. We intentionally do not
+    # pick whichever number is mathematically closest: that could turn an OCR
+    # mistake into a false PASS.
+    if explicit_subtotal is not None:
+        line_target_name, line_target = "subtotal", explicit_subtotal
+    elif total is not None:
+        line_target_name, line_target = "total_amount", total
+    else:
+        line_target_name, line_target = "none", None
+
+    line_operands = {"line_items_sum": line_sum}
+    if line_target_name == "subtotal":
+        line_operands["subtotal"] = explicit_subtotal
+    elif line_target_name == "total_amount":
+        line_operands["total_amount"] = total
     checks.append(_make_check(
         "invoice_line_items_sum",
-        "sum(line_item.amount) ≈ subtotal (or total when subtotal absent)",
-        {"line_items_sum": line_sum}, line_sum, target,
+        f"sum(line_item.amount) ≈ applicable reported subtotal/total [target: {line_target_name}]",
+        line_operands,
+        line_sum, line_target,
     ))
 
     tax = _num(_raw(extracted, "tax_amount", "tax", "gst_amount"))
     discount = _num(_raw(extracted, "discount", "discount_amount"))
-    # Only use discount when it is actually present; do not invent 0.
-    if subtotal is not None and tax is not None and total is not None:
+    # For the tax equation, an explicit subtotal or an explicitly printed pre-tax
+    # / net / taxable amount can be the base. Nothing is derived or invented.
+    tax_base = explicit_subtotal if explicit_subtotal is not None else pre_tax
+    tax_base_name = "subtotal" if explicit_subtotal is not None else "pre_tax_or_net_amount"
+    if tax_base is not None and tax is not None and total is not None:
         if discount is not None:
-            calc = subtotal + tax - discount
-            operands = {"subtotal": subtotal, "tax_amount": tax, "discount": discount}
-            formula = "subtotal + tax_amount - discount"
+            calc = tax_base + tax - discount
+            operands = {tax_base_name: tax_base, "tax_amount": tax, "discount": discount}
+            formula = f"{tax_base_name} + tax_amount - discount"
         else:
-            calc = subtotal + tax
-            operands = {"subtotal": subtotal, "tax_amount": tax}
-            formula = "subtotal + tax_amount"
+            calc = tax_base + tax
+            operands = {tax_base_name: tax_base, "tax_amount": tax}
+            formula = f"{tax_base_name} + tax_amount"
         checks.append(_make_check("invoice_total_check", formula, operands, calc, total))
     else:
         checks.append(_make_check(
-            "invoice_total_check", "subtotal + tax_amount - discount (where shown)",
-            {"subtotal": subtotal, "tax_amount": tax}, None, total,
+            "invoice_total_check", "reported pre-tax/subtotal + tax - discount (where shown)",
+            {tax_base_name: tax_base, "tax_amount": tax}, None, total,
         ))
 
     cash = _num(_raw(extracted, "cash_paid", "amount_paid", "cash_tendered"))

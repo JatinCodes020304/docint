@@ -4,9 +4,9 @@ FastAPI + plain HTML/CSS/JS prototype for the AI Engineer Internship document-in
 
 ## Solution overview
 
-The app accepts PDF/JPG/PNG financial documents, validates input constraints, extracts text using native PDF parsing or OCR, sends the page-marked text to Groq for structured extraction, with automatic Gemini fallback, performs deterministic financial validations in Python, stores the processed result, and displays it through a web dashboard and REST API.
+The app accepts PDF/JPG/PNG financial documents, validates input constraints, uses native PDF text when a reliable text layer exists, and uses Gemini Vision directly for scanned PDFs/JPG/PNG. Tesseract + text-LLM extraction is retained as a fallback. Financial validations run deterministically in Python, results are persisted, and the frontend exposes extracted fields, tables, validation checks and raw JSON.
 
-**Pipeline:** Upload -> File validation -> Native PDF text / Poppler + Tesseract OCR -> Groq extraction -> Gemini fallback on provider failure -> Python financial validation -> SQLite/Postgres persistence -> dashboard + JSON API.
+**Pipeline:** Upload -> File validation -> native-text fast path OR Gemini Vision primary -> Tesseract + text-LLM fallback only when needed -> deterministic Python financial validation -> SQLite/Postgres persistence -> dashboard + JSON API.
 
 The user manually chooses one of: `invoice`, `balance_sheet`, `profit_and_loss`, `cash_flow_statement`. The application does **not** auto-classify document type.
 
@@ -19,8 +19,8 @@ See `docs/architecture.png`.
 - Backend: Python + FastAPI
 - Frontend: plain HTML/CSS/JavaScript served by FastAPI
 - Database: SQLite by default, Postgres-compatible through `DATABASE_URL`
-- OCR: Tesseract OCR; Poppler is used for PDF rasterization when needed
-- LLM extraction: Groq API (primary) + Gemini API (automatic fallback)
+- Visual extraction: Gemini Vision (`gemini-2.5-flash`) for scanned PDFs/JPG/PNG
+- Native/text extraction: native PDF text -> Groq text extraction; Tesseract + Groq/Gemini text extraction is the fallback path
 - API docs: FastAPI Swagger/OpenAPI at `/docs`
 - Deployment: Dockerfile included for Render/Railway/Koyeb-style deployment
 
@@ -89,17 +89,21 @@ curl -X POST http://localhost:8000/api/v1/documents/process \
 
 ## Extraction design
 
-The primary provider is Groq. It receives OCR/native text with explicit page markers and returns JSON Object Mode output. The prompt asks for all meaningful visible fields and tables, `null` for missing/unreadable values, exact source values, comparative periods, and source-text/page evidence. Confidence is intentionally omitted instead of fabricating arbitrary LLM confidence numbers.
+Routing is intentionally document/layout agnostic. A PDF with a usable embedded text layer takes the fast native-text path. Scanned PDFs and image uploads go directly to Gemini Vision so table/column geometry is preserved instead of being flattened by OCR. If Vision is unavailable or fails, the existing Tesseract + text-LLM path remains as a fallback.
 
-Provider failures are handled defensively: retryable 429/5xx/timeout responses are retried with exponential backoff. If Groq still fails (or returns invalid structured JSON), the application automatically tries Gemini when `GEMINI_API_KEY` is configured. Set `LLM_PROVIDER=gemini` to reverse the order.
+The extraction prompts require all meaningful visible fields and tables, exact comparative-period labels, `null` for missing/unreadable values, source evidence/page numbers where possible, and explicitly forbid calculating or repairing extracted values. Invoice prompts separately scan item tables, GST/VAT summaries, totals and cash/change areas. Statement prompts bind every row value to the period header directly above it and preserve the same mapping across continuation pages.
 
-**Multi-column GST/tax invoice tables:** plain OCR flattens a wide item table (Qty/Rate/Taxable Value/CGST/SGST/Amount) into linear text, which is not enough to reliably tell the LLM which number is which column. Before the LLM call, `ocr_service.py` detects the item table's header row from Tesseract's per-word pixel positions and re-groups every value beneath it into the correct column band by its actual position on the page — see `FIX_NOTES.md` for details. This alternate, column-aligned view is what the extraction prompt is told to trust over the flattened text when the two disagree.
+A single strict visual audit retry may run when deterministic financial validation finds an inconsistency. The retry is accepted only if it preserves at least as many applicable validation checks and genuinely improves PASS/FAIL results; it cannot win simply by turning disputed fields into `null` / `NOT_APPLICABLE`.
+
+The Tesseract fallback still contains multi-column table alignment logic for difficult invoice OCR. Provider calls use retries/backoff, and no LLM is allowed to decide the final financial PASS/FAIL status.
 
 ## Financial validation
 
 Financial checks run in Python, not in either LLM provider. Missing operands produce `NOT_APPLICABLE`. Tolerance uses the larger of `VALIDATION_ABS_TOLERANCE` and `VALIDATION_PCT_TOLERANCE * reported_value`.
 
-Implemented checks cover invoice line math/totals/change, balance-sheet identity, P&L reconciliations, and cash-flow reconciliation per period where fields exist.
+Implemented checks cover invoice line math/totals/change, balance-sheet identity, P&L reconciliations, and cash-flow reconciliation per period where fields exist. Invoice quantity × unit-price uses a strict absolute money tolerance so OCR slips such as `29.06` versus printed `29.00` do not pass under the wider statement-level percentage tolerance. Tax-summary net/pre-tax values are kept separate from invoice line-total reconciliation, which prevents GST-inclusive receipts from being falsely failed.
+
+`processing_status` represents whether the document pipeline completed successfully. Financial reconciliation is reported independently under `validation.overall_status`, so a successfully extracted document with a genuine accounting inconsistency is not mislabeled as a processing failure.
 
 ## Persistence
 
@@ -112,7 +116,7 @@ cd backend
 pytest -q
 ```
 
-The suite covers file validation, OCR behavior, structured extraction schema, financial calculations, controlled invalid-upload responses, health, and a mocked end-to-end API flow without spending external LLM quota.
+The suite covers file validation, OCR behavior, structured extraction schema, invoice tax-inclusive/tax-exclusive regressions, strict line-item arithmetic, comparative financial calculations, audit-retry safety, controlled invalid-upload responses, health, and a mocked end-to-end API flow without spending external LLM quota. Current local result: **33 passed**.
 
 ## Deployment
 
@@ -120,10 +124,10 @@ The Dockerfile installs Tesseract and Poppler and serves both frontend and backe
 
 **⚠️ Pending — fill in before final submission:**
 
-- Frontend URL: _TODO — fill after deploying (Render/Railway/Koyeb)_
-- Backend API URL: _TODO_
-- Swagger URL: _TODO — usually `<backend URL>/docs`_
-- Health URL: _TODO — usually `<backend URL>/api/v1/health`_
+- Frontend URL: https://docint.onrender.com/
+- Backend API URL: https://docint.onrender.com/api/v1
+- Swagger URL: https://docint.onrender.com/docs
+- Health URL: https://docint.onrender.com/api/v1/health
 - Public GitHub repo: _TODO_
 
 Deployment environment variables should include `GROQ_API_KEY`, `GROQ_MODEL`, optional `GEMINI_API_KEY`/`GEMINI_MODEL` for fallback, and `DATABASE_URL` if using Postgres. Do not commit real secrets.

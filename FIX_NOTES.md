@@ -61,3 +61,19 @@ Changes made:
 - A tiny leading decimal point that full-page OCR drops can be recovered from the actual token pixels; no merchant-specific or amount-specific values are hardcoded.
 - Invoice deterministic enrichment prefers an explicitly decimal-grounded reading over a digits-only OCR reading of the same labelled field.
 - Added regression tests for leading-decimal receipt change values and sub-1000 comparative balance-sheet cells.
+
+## 2026-09-11 — Layout-flexible Vision extraction hardening
+- Vision prompt is now document-type aware without hardcoding any vendor/template layout.
+- Invoice/receipt extraction discovers actual headers and supports digital invoices, thermal receipts, GST/VAT summaries, cash/change, and multi-line item rows.
+- Balance Sheet / P&L / Cash Flow extraction locks exact comparative period labels before mapping row values, with explicit no-column-shift rules.
+- Cash Flow continuation pages preserve the same period mapping across pages.
+- Tax-inclusive invoice totals are distinguished from pre-tax subtotal fields; the model is forbidden from deriving subtotal by arithmetic.
+- If direct Vision extraction produces a deterministic financial FAIL, the pipeline performs one strict visual re-read. It keeps the retry only when deterministic validation improves; an all-null retry cannot win.
+- Tesseract remains fallback-only for scanned/image documents.
+- Existing automated tests: 25/25 pass.
+
+## v3 evaluator-focused invoice reconciliation fix
+- Invoice line-item reconciliation no longer assumes `sum(line_items) == subtotal` for every layout.
+- It reconciles against the closest *reported* subtotal/net or final total, covering tax-exclusive and tax-inclusive receipts without vendor-specific hard-coding.
+- Invoice Vision prompt now explicitly rescans CASH/TENDERED/CHANGE, preserves Net Amt vs Subtotal semantics, and warns against adjacent-column decimal contamination.
+- Added regression tests for tax-inclusive, tax-exclusive, and true-mismatch invoices.

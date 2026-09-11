@@ -77,6 +77,7 @@ class Settings:
 
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL") or os.getenv("LLM_MODEL", "gemini-2.5-flash-lite")
+    GEMINI_VISION_MODEL: str = os.getenv("GEMINI_VISION_MODEL", "gemini-2.5-flash")
     GEMINI_FALLBACK_MODEL: str = os.getenv("GEMINI_FALLBACK_MODEL", "")
 
     LLM_RETRY_ATTEMPTS: int = int(os.getenv("LLM_RETRY_ATTEMPTS", "3"))

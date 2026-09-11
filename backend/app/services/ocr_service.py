@@ -601,6 +601,29 @@ def _ocr_image(image) -> str:
     return _ocr_image_tesseract(image)
 
 
+
+def try_native_pdf_text(raw: bytes) -> OCRResult | None:
+    """Fast path for native PDFs.
+
+    Returns an OCRResult only when every page has a usable embedded text layer.
+    Returns None for scanned/mixed PDFs without invoking Tesseract. This lets the
+    document pipeline try Vision first and keep Tesseract as a fallback.
+    """
+    try:
+        native_texts = _extract_native_pdf_text(raw)
+    except Exception:
+        logger.warning("Native PDF text probe failed; treating document as vision/OCR candidate", exc_info=True)
+        return None
+
+    if not native_texts or any(len(t) < _MIN_NATIVE_TEXT_CHARS for t in native_texts):
+        return None
+
+    pages = [
+        PageText(page_number=i, text=text, source="native")
+        for i, text in enumerate(native_texts, start=1)
+    ]
+    return OCRResult(pages=pages, ocr_used=False)
+
 def run_ocr(raw: bytes, content_type: str) -> OCRResult:
     """
     Entry point for the pipeline. `content_type` comes from the validation
