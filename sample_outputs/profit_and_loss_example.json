@@ -1,20 +1,163 @@
 {
-  "document_name": "Consolidated Profit & Loss 2018.pdf",
+  "document_name": "Consolidated Profit & Loss 2024.pdf",
   "document_type": "profit_and_loss",
   "processing_status": "PASS",
   "overall_confidence": null,
-  "file_validation": {"file_type": "application/pdf", "is_supported": true, "is_readable": true, "page_count": 1, "status": "PASS"},
   "extracted_data": {
-    "header": {"statement_title": {"value": "Consolidated Profit & Loss", "evidence": {"source_text": "Consolidated Profit & Loss", "page_number": 1}}},
-    "periods": ["2018", "2017"],
-    "currency": {"value": "INR", "evidence": {"source_text": "Amount in INR", "page_number": 1}},
-    "financial_items": [
-      {"name": "Total Income", "values_by_period": {"2018": 150000.00, "2017": 130000.00}, "evidence": {"source_text": "Total Income 150000 130000", "page_number": 1}},
-      {"name": "Total Expenditure", "values_by_period": {"2018": 100000.00, "2017": 91000.00}, "evidence": {"source_text": "Total Expenditure 100000 91000", "page_number": 1}},
-      {"name": "Net Profit", "values_by_period": {"2018": 50000.00, "2017": 39000.00}, "evidence": {"source_text": "Net Profit 50000 39000", "page_number": 1}}
+    "periods": [
+      "2024",
+      "2023"
     ],
-    "tables": []
+    "currency": {
+      "value": "INR"
+    },
+    "tables": [
+      {
+        "name": "Profit & Loss Statement",
+        "rows": [
+          {
+            "label": "Interest earned",
+            "values": {
+              "2024": 283649.02,
+              "2023": 170754.05
+            }
+          },
+          {
+            "label": "Other income",
+            "values": {
+              "2024": 124345.75,
+              "2023": 33912.05
+            }
+          },
+          {
+            "label": "Total Income",
+            "values": {
+              "2024": 407994.77,
+              "2023": 204666.1
+            }
+          },
+          {
+            "label": "Interest expended",
+            "values": {
+              "2024": 154138.55,
+              "2023": 77779.94
+            }
+          },
+          {
+            "label": "Operating expenses",
+            "values": {
+              "2024": 152269.34,
+              "2023": 51533.69
+            }
+          },
+          {
+            "label": "Provisions and contingencies",
+            "values": {
+              "2024": 36140.38,
+              "2023": 29203.77
+            }
+          },
+          {
+            "label": "Total Expenditure",
+            "values": {
+              "2024": 342548.27,
+              "2023": 158517.4
+            }
+          },
+          {
+            "label": "Consolidated Net Profit for the year before minorities’ interest",
+            "values": {
+              "2024": 65446.5,
+              "2023": 46148.7
+            }
+          },
+          {
+            "label": "Minority Interest",
+            "values": {
+              "2024": 1384.46,
+              "2023": 151.59
+            }
+          },
+          {
+            "label": "Consolidated Net Profit for the year attributable to the group",
+            "values": {
+              "2024": 64062.04,
+              "2023": 45997.11
+            }
+          }
+        ]
+      }
+    ]
   },
-  "validation": {"checks": [{"name": "pl_income_minus_expenditure_2018", "formula": "total_income - total_expenditure", "operands": {"total_income": 150000.00, "total_expenditure": 100000.00}, "calculated_value": 50000.00, "reported_value": 50000.00, "variance": 0.00, "status": "PASS"}], "overall_status": "PASS", "issues": []},
-  "processing_metadata": {"ocr_used": true, "processed_at": "2026-09-10T18:25:00Z", "processing_time_ms": 9000}
+  "validation": {
+    "checks": [
+      {
+        "name": "total_income_2024",
+        "formula": "interest_earned + other_income",
+        "calculated_value": 407994.77,
+        "reported_value": 407994.77,
+        "variance": 0.0,
+        "status": "PASS"
+      },
+      {
+        "name": "total_expenditure_2024",
+        "formula": "interest_expended + operating_expenses + provisions_and_contingencies",
+        "calculated_value": 342548.27,
+        "reported_value": 342548.27,
+        "variance": 0.0,
+        "status": "PASS"
+      },
+      {
+        "name": "profit_before_minority_2024",
+        "formula": "total_income - total_expenditure",
+        "calculated_value": 65446.5,
+        "reported_value": 65446.5,
+        "variance": 0.0,
+        "status": "PASS"
+      },
+      {
+        "name": "group_profit_2024",
+        "formula": "profit_before_minority_interest - minority_interest",
+        "calculated_value": 64062.04,
+        "reported_value": 64062.04,
+        "variance": 0.0,
+        "status": "PASS"
+      },
+      {
+        "name": "total_income_2023",
+        "formula": "interest_earned + other_income",
+        "calculated_value": 204666.1,
+        "reported_value": 204666.1,
+        "variance": 0.0,
+        "status": "PASS"
+      },
+      {
+        "name": "total_expenditure_2023",
+        "formula": "interest_expended + operating_expenses + provisions_and_contingencies",
+        "calculated_value": 158517.4,
+        "reported_value": 158517.4,
+        "variance": 0.0,
+        "status": "PASS"
+      },
+      {
+        "name": "profit_before_minority_2023",
+        "formula": "total_income - total_expenditure",
+        "calculated_value": 46148.7,
+        "reported_value": 46148.7,
+        "variance": 0.0,
+        "status": "PASS"
+      },
+      {
+        "name": "group_profit_2023",
+        "formula": "profit_before_minority_interest - minority_interest",
+        "calculated_value": 45997.11,
+        "reported_value": 45997.11,
+        "variance": 0.0,
+        "status": "PASS"
+      }
+    ],
+    "overall_status": "PASS",
+    "issues": []
+  },
+  "note": "Grounded regression sample from the tested banking-style P&L. Final submission should also include the raw JSON exported from the deployed app."
 }

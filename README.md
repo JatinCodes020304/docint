@@ -18,7 +18,7 @@ See `docs/architecture.png`.
 
 - Backend: Python + FastAPI
 - Frontend: plain HTML/CSS/JavaScript served by FastAPI
-- Database: SQLite by default, Postgres-compatible through `DATABASE_URL`
+- Database: SQLite locally; managed PostgreSQL on Railway through `DATABASE_URL`
 - Visual extraction: Gemini Vision (`gemini-2.5-flash`) for scanned PDFs/JPG/PNG
 - Native/text extraction: native PDF text -> Groq text extraction; Tesseract + Groq/Gemini text extraction is the fallback path
 - API docs: FastAPI Swagger/OpenAPI at `/docs`
@@ -64,10 +64,10 @@ TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
 See `.env.example`. Required for real extraction:
 
 ```env
-DATABASE_URL=sqlite:///./docint.db
+DATABASE_URL=sqlite:///./docint.db  # local development
 LLM_PROVIDER=groq
 GROQ_API_KEY=your_real_groq_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-120b
 GEMINI_API_KEY=your_optional_gemini_key_here
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
@@ -107,7 +107,23 @@ Implemented checks cover invoice line math/totals/change, balance-sheet identity
 
 ## Persistence
 
-The default is SQLite (`backend/docint.db`). For durable production-style deployment, set `DATABASE_URL` to a managed Postgres URL. Results are stored as JSON blocks because fields vary by document type.
+Local development defaults to SQLite (`backend/docint.db`). The Railway deployment should use **managed PostgreSQL** so processed-document history survives container restarts/redeploys. The backend reads `DATABASE_URL`, supports both `postgresql://...` and legacy `postgres://...` URLs, and uses SQLAlchemy JSON columns for the variable document payloads.
+
+### Railway PostgreSQL setup
+
+1. In the Railway project, click **+ New -> Database -> PostgreSQL**.
+2. Open the `docint` service -> **Variables**.
+3. Add `DATABASE_URL` as a Railway reference to the database service, typically:
+
+```text
+${{Postgres.DATABASE_URL}}
+```
+
+If Railway named the database service something other than `Postgres`, choose its `DATABASE_URL` from **Add Reference** instead of typing the service name manually.
+4. Deploy/redeploy the `docint` service. On startup, SQLAlchemy creates the `processed_documents` table automatically if it does not exist.
+5. Process one document, redeploy/restart the app, then confirm the record is still present on the dashboard or `GET /api/v1/documents`. That is the persistence proof for the case study.
+
+Do **not** put the public/external database URL, password, or any API key in GitHub or the README.
 
 ## Tests
 
@@ -116,21 +132,23 @@ cd backend
 pytest -q
 ```
 
-The suite covers file validation, OCR behavior, structured extraction schema, invoice tax-inclusive/tax-exclusive regressions, strict line-item arithmetic, comparative financial calculations, audit-retry safety, controlled invalid-upload responses, health, and a mocked end-to-end API flow without spending external LLM quota. Current local result: **33 passed**.
+The suite covers file validation, OCR behavior, structured extraction schema, invoice tax-inclusive/tax-exclusive regressions, strict line-item arithmetic, comparative financial calculations, audit-retry safety, controlled invalid-upload responses, health, and a mocked end-to-end API flow without spending external LLM quota. Current local result: **35 passed, 3 warnings**.
 
 ## Deployment
 
 The Dockerfile installs Tesseract and Poppler and serves both frontend and backend from one FastAPI deployment.
 
-**⚠️ Pending — fill in before final submission:**
+**Current public deployment:**
 
-- Frontend URL: https://docint.onrender.com/
-- Backend API URL: https://docint.onrender.com/api/v1
-- Swagger URL: https://docint.onrender.com/docs
-- Health URL: https://docint.onrender.com/api/v1/health
-- Public GitHub repo: _TODO_
+- Frontend URL: https://docint-production.up.railway.app/
+- Backend API URL: https://docint-production.up.railway.app/api/v1
+- Swagger URL: https://docint-production.up.railway.app/docs
+- Health URL: https://docint-production.up.railway.app/api/v1/health
+- Public GitHub repo: https://github.com/JatinCodes020304/docint
 
-Deployment environment variables should include `GROQ_API_KEY`, `GROQ_MODEL`, optional `GEMINI_API_KEY`/`GEMINI_MODEL` for fallback, and `DATABASE_URL` if using Postgres. Do not commit real secrets.
+Railway is deployed from the public GitHub repository. The deployed service serves the frontend and FastAPI backend from the same container.
+
+Deployment environment variables should include `GROQ_API_KEY`, `GROQ_MODEL`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_VISION_MODEL`, and Railway-managed `DATABASE_URL`. Keep every real secret only in Railway Variables / local `.env`; never commit real values.
 
 ## Included deliverables
 
@@ -143,11 +161,33 @@ Deployment environment variables should include `GROQ_API_KEY`, `GROQ_MODEL`, op
 
 ## Known limitations / production improvements
 
-This is a 3-day prototype. Production improvements would include durable object storage for originals, managed Postgres, Alembic migrations, request authentication, stricter rate limiting, async job processing, richer OCR/table extraction, observability, and a stronger evidence-verification/confidence method.
+### Known limitations
+
+- Vision/OCR quality still depends on scan resolution, skew, compression, unusual fonts and dense table layouts.
+- LLM extraction is non-deterministic, so deterministic Python validation and evidence fields are used as safeguards.
+- Some receipt layouts can still omit a visible unit price even when the amount/quantity are extracted; uncertain values are intentionally returned as `null` rather than invented.
+- The application accepts at most 3 pages per upload by case-study design.
+- The synchronous request path can take tens of seconds for scanned multi-page statements because vision/OCR and LLM calls are external network operations.
+- SQLite remains the zero-setup local fallback. The submitted Railway deployment should use managed PostgreSQL; a container-local SQLite file is not treated as durable persistence.
+- Confidence scoring is intentionally conservative and may be `null` when no trustworthy calibrated score is available.
+
+### Production improvements
+
+- Alembic migrations, automated backups/restore testing, and production-grade connection-pool tuning for PostgreSQL.
+- Object storage for original documents and rendered page images.
+- Background job queue for long OCR/vision requests plus polling/webhook status.
+- Authentication/authorization, per-user data isolation, stricter CORS and rate limiting.
+- Structured observability: request IDs, metrics, tracing, provider latency/error dashboards and alerts.
+- Provider routing/circuit breakers, caching and cost controls.
+- Stronger table reconstruction and field-level evidence verification.
+- Malware scanning, MIME sniffing and stricter upload security.
+- Expanded regression corpus covering more layouts, currencies, tax styles and multi-page statements.
 
 ## AI/tool usage declaration
 
-Generative AI coding assistance was used to help design, implement, review, and test the prototype. The candidate should be able to explain and modify the submitted architecture, extraction prompt, validation formulas, API flow, and deployment setup during the interview.
+AI-assisted development tools were used during implementation and review. OpenAI ChatGPT was used for coding/review assistance; Gemini Vision is part of the runtime extraction pipeline for scanned/image documents; Groq-hosted text models are used for structured text extraction with provider fallback.
+
+All financial PASS/FAIL decisions are made by deterministic Python code rather than by an LLM. The candidate can explain and modify the architecture, prompts, validation formulas, API flow, persistence layer and deployment setup.
 
 
 ## Stage 8 extraction hardening
@@ -156,3 +196,7 @@ Generative AI coding assistance was used to help design, implement, review, and 
 - Invoice prompt now requires exact header/row alignment and tells the model not to confuse SKU/row numbers/tax-summary values with quantity or price.
 - Suspicious line-item arithmetic must be re-read against the printed row; uncertain mappings should be null rather than guessed.
 - Groq primary + Gemini fallback remains enabled.
+
+## Final verification checklist
+
+Before submission, verify on the deployed Railway URL: `/docs`, `/api/v1/health`, POST upload for all four document types, `GET /api/v1/documents`, `GET /api/v1/documents/{document_name}`, unsupported file rejection, >3-page rejection, and durable database persistence after a redeploy/restart. Also confirm `.env` is not committed and no secrets appear in Git history.

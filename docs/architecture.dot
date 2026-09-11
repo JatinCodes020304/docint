@@ -14,8 +14,9 @@ digraph G {
   extract [label="Structured Extraction\nAll fields + tables + evidence\nExact period/header binding"];
   checks [label="Deterministic Python Validation\nPASS / FAIL / NOT_APPLICABLE"];
   audit [label="One Guarded Vision Audit Retry\nOnly if applicability preserved\nand validation improves"];
-  db [label="SQLite / Postgres\nPersisted JSON result"];
+  db [label="Persistence\nSQLite (local/demo) / Managed Postgres (production)\nStored JSON result"];
   result [label="Result UI\nExtraction + validations"];
+  deploy [label="Railway Deployment\nFrontend + FastAPI in one service"];
 
   user -> frontend;
   frontend -> api [label="multipart upload"];
@@ -34,4 +35,6 @@ digraph G {
   db -> api [label="GET latest/list"];
   api -> result;
   result -> user;
+  deploy -> frontend [style=dotted, label="hosts"];
+  deploy -> api [style=dotted, label="hosts"];
 }

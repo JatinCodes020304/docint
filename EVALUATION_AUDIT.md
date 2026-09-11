@@ -30,3 +30,12 @@ This audit maps the repository to the case-study scoring areas. Items that requi
 4. Confirm DB persistence survives refresh/redeploy according to the chosen production DB.
 5. Push to a PUBLIC GitHub repository and replace the GitHub TODO in README/presentation.
 6. Never commit `.env` or API keys.
+
+## Final documentation refresh (2026-09-11)
+- Public deployment references updated from Render to Railway.
+- Public GitHub URL added.
+- Local automated test status: 35 passed, 3 warnings.
+- P&L table-to-validator fallback and cash-flow amalgamation adjustment are covered by regression tests.
+- Sample P&L and cash-flow JSON fixtures refreshed with grounded comparative-period values.
+- Architecture diagram refreshed to show Railway hosting and SQLite-vs-managed-Postgres persistence.
+- README expanded with AI/tool declaration, known limitations, production improvements, and final live-verification checklist.

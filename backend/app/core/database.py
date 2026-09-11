@@ -18,9 +18,22 @@ from app.core.config import settings
 
 # `check_same_thread` is only needed for SQLite (FastAPI can use multiple
 # threads for one request); it's ignored for Postgres.
-connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+database_url = settings.DATABASE_URL.strip()
+# Some hosting providers still expose the legacy ``postgres://`` scheme.
+# SQLAlchemy 2.x expects ``postgresql://``. Normalize it once here so the
+# same deployment configuration works with either form.
+if database_url.startswith("postgres://"):
+    database_url = "postgresql://" + database_url[len("postgres://"):]
 
-engine = create_engine(settings.DATABASE_URL, connect_args=connect_args)
+connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+
+engine_kwargs = {"connect_args": connect_args}
+if database_url.startswith("postgresql"):
+    # Railway/managed Postgres connections can be recycled; pre-ping prevents
+    # stale pooled connections from causing the next API request to fail.
+    engine_kwargs["pool_pre_ping"] = True
+
+engine = create_engine(database_url, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

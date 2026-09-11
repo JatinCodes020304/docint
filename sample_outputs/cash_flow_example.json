@@ -1,21 +1,122 @@
 {
-  "document_name": "Consolidated Cash Flow 2018.pdf",
+  "document_name": "Consolidated Cash Flow Statement 2025.pdf",
   "document_type": "cash_flow_statement",
   "processing_status": "PASS",
   "overall_confidence": null,
-  "file_validation": {"file_type": "application/pdf", "is_supported": true, "is_readable": true, "page_count": 1, "status": "PASS"},
   "extracted_data": {
-    "header": {"statement_title": {"value": "Consolidated Cash Flow Statement", "evidence": {"source_text": "Consolidated Cash Flow Statement", "page_number": 1}}},
-    "periods": ["2018"],
-    "currency": {"value": "INR", "evidence": {"source_text": "Amount in INR", "page_number": 1}},
-    "financial_items": [
-      {"name": "Operating Cash Flow", "values_by_period": {"2018": 30000.00}, "evidence": {"source_text": "Operating Cash Flow 30000", "page_number": 1}},
-      {"name": "Investing Cash Flow", "values_by_period": {"2018": -12000.00}, "evidence": {"source_text": "Investing Cash Flow (12000)", "page_number": 1}},
-      {"name": "Financing Cash Flow", "values_by_period": {"2018": 5000.00}, "evidence": {"source_text": "Financing Cash Flow 5000", "page_number": 1}},
-      {"name": "Net Increase in Cash", "values_by_period": {"2018": 23000.00}, "evidence": {"source_text": "Net Increase in Cash 23000", "page_number": 1}}
+    "periods": [
+      "2025",
+      "2024"
     ],
-    "tables": []
+    "currency": {
+      "value": "INR"
+    },
+    "financial_items": [
+      {
+        "name": "Operating Cash Flow",
+        "values_by_period": {
+          "2025": 127241.84,
+          "2024": 19069.34
+        }
+      },
+      {
+        "name": "Investing Cash Flow",
+        "values_by_period": {
+          "2025": -3850.64,
+          "2024": 5313.77
+        }
+      },
+      {
+        "name": "Financing Cash Flow",
+        "values_by_period": {
+          "2025": -102477.54,
+          "2024": -3983.06
+        }
+      },
+      {
+        "name": "Effect of fluctuation in foreign currency translation reserve",
+        "values_by_period": {
+          "2025": 199.73,
+          "2024": 104.94
+        }
+      },
+      {
+        "name": "Net Increase in Cash",
+        "values_by_period": {
+          "2025": 21113.39,
+          "2024": 20504.99
+        }
+      },
+      {
+        "name": "Opening Cash",
+        "values_by_period": {
+          "2025": 228834.51,
+          "2024": 197147.81
+        }
+      },
+      {
+        "name": "Cash acquired on amalgamation",
+        "values_by_period": {
+          "2025": 0.0,
+          "2024": 11181.71
+        }
+      },
+      {
+        "name": "Closing Cash",
+        "values_by_period": {
+          "2025": 249947.9,
+          "2024": 228834.51
+        }
+      }
+    ]
   },
-  "validation": {"checks": [{"name": "cash_flow_net_increase_2018", "formula": "operating + investing + financing + fx_adjustment", "operands": {"operating_cash_flow": 30000.00, "investing_cash_flow": -12000.00, "financing_cash_flow": 5000.00}, "calculated_value": 23000.00, "reported_value": 23000.00, "variance": 0.00, "status": "PASS"}], "overall_status": "PASS", "issues": []},
-  "processing_metadata": {"ocr_used": true, "processed_at": "2026-09-10T18:30:00Z", "processing_time_ms": 8500}
+  "validation": {
+    "checks": [
+      {
+        "name": "net_increase_in_cash_2025",
+        "formula": "operating_cash_flow + investing_cash_flow + financing_cash_flow + fx_adjustment",
+        "calculated_value": 21113.39,
+        "reported_value": 21113.39,
+        "variance": 0.0,
+        "status": "PASS"
+      },
+      {
+        "name": "closing_cash_2025",
+        "formula": "opening_cash + net_increase_in_cash + applicable_adjustments",
+        "operands": {
+          "opening_cash": 228834.51,
+          "net_increase_in_cash": 21113.39,
+          "cash_acquired_on_amalgamation": 0.0
+        },
+        "calculated_value": 249947.9,
+        "reported_value": 249947.9,
+        "variance": 0.0,
+        "status": "PASS"
+      },
+      {
+        "name": "net_increase_in_cash_2024",
+        "formula": "operating_cash_flow + investing_cash_flow + financing_cash_flow + fx_adjustment",
+        "calculated_value": 20504.99,
+        "reported_value": 20504.99,
+        "variance": 0.0,
+        "status": "PASS"
+      },
+      {
+        "name": "closing_cash_2024",
+        "formula": "opening_cash + net_increase_in_cash + applicable_adjustments",
+        "operands": {
+          "opening_cash": 197147.81,
+          "net_increase_in_cash": 20504.99,
+          "cash_acquired_on_amalgamation": 11181.71
+        },
+        "calculated_value": 228834.51,
+        "reported_value": 228834.51,
+        "variance": 0.0,
+        "status": "PASS"
+      }
+    ],
+    "overall_status": "PASS",
+    "issues": []
+  },
+  "note": "Grounded regression sample from the tested 2025/2024 cash-flow statement. Final submission should also include the raw JSON exported from the deployed app."
 }

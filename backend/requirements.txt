@@ -8,6 +8,7 @@ python-dotenv==1.0.1
 
 # --- Database ---
 sqlalchemy==2.0.35
+psycopg2-binary==2.9.10      # PostgreSQL driver for Railway/managed Postgres
 
 # --- File validation (stage 1) ---
 pypdf==4.3.1                # PDF parsing / page counting / corruption checks
