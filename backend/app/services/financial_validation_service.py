@@ -226,7 +226,79 @@ def _balance_sheet(extracted: dict[str, Any]) -> list[ValidationCheck]:
     )
 
 
+
+def _canonical_row_label(label: Any) -> str:
+    """Normalize a printed statement row label for deterministic table fallback."""
+    import re
+    text = str(label or "").lower().replace("&", " and ")
+    text = text.replace("’", "'").replace("‘", "'")
+    text = re.sub(r"[^a-z0-9]+", "_", text).strip("_")
+    return text
+
+
+def _table_period_value(extracted: dict[str, Any], aliases: tuple[str, ...]) -> Any:
+    """Return a period-keyed value from an explicitly extracted table row.
+
+    This is a fallback bridge only: it maps printed rows already present in `tables`
+    to canonical validator concepts. It never calculates or invents a source value.
+    """
+    wanted = {_canonical_row_label(a) for a in aliases}
+    for table in extracted.get("tables") or []:
+        if not isinstance(table, dict):
+            continue
+        for row in table.get("rows") or []:
+            if not isinstance(row, dict):
+                continue
+            label = _canonical_row_label(row.get("label"))
+            if label not in wanted:
+                continue
+            values = row.get("values")
+            if isinstance(values, dict) and values:
+                cleaned = {str(k): v for k, v in values.items() if _num(v) is not None}
+                if cleaned:
+                    return cleaned
+    return None
+
+
+def _pnl_value(extracted: dict[str, Any], *field_aliases: str, row_aliases: tuple[str, ...] = ()) -> Any:
+    value = _raw(extracted, *field_aliases)
+    if value is not None:
+        return value
+    return _table_period_value(extracted, row_aliases or tuple(field_aliases))
+
+
+def _profit_and_loss_with_table_fallback(extracted: dict[str, Any]) -> dict[str, Any]:
+    """Expose printed P&L table rows to the existing canonical validator.
+
+    Vision sometimes returns the row correctly in `tables` but omits the duplicate
+    top-level field. The validator should not mark that check N/A merely because of
+    that representational omission.
+    """
+    mapping = {
+        "interest_earned": (("interest_earned", "interest_income"), ("interest earned", "interest income")),
+        "other_income": (("other_income",), ("other income",)),
+        "total_income": (("total_income", "revenue"), ("total income",)),
+        "interest_expended": (("interest_expended", "interest_expense"), ("interest expended", "interest expense")),
+        "operating_expenses": (("operating_expenses",), ("operating expenses",)),
+        "provisions_and_contingencies": (("provisions_and_contingencies", "provisions"), ("provisions and contingencies", "provisions & contingencies")),
+        "total_expenditure": (("total_expenditure", "total_expenses"), ("total expenditure", "total expenses")),
+        "profit_before_minority_interest": (("profit_before_minority_interest", "consolidated_net_profit_before_minority_interest", "profit_before_tax"), ("consolidated net profit for the year before minorities' interest", "consolidated net profit for the year before minorities interest", "profit before minority interest")),
+        "minority_interest": (("minority_interest",), ("minority interest", "less minority interest")),
+        "net_profit_attributable_to_group": (("net_profit_attributable_to_group", "consolidated_net_profit_attributable_to_group", "net_profit"), ("consolidated net profit for the year attributable to the group", "net profit attributable to the group")),
+        "brought_forward_profit": (("brought_forward_profit", "profit_brought_forward"), ("brought forward consolidated profit attributable to the group", "brought forward profit")),
+        "total_available_for_appropriation": (("total_available_for_appropriation",), ("total available for appropriation",)),
+    }
+    bridged = dict(extracted)
+    for canonical, (field_aliases, row_aliases) in mapping.items():
+        if _raw(bridged, *field_aliases) is not None:
+            continue
+        value = _table_period_value(extracted, row_aliases)
+        if value is not None:
+            bridged[canonical] = {"value": value}
+    return bridged
+
 def _profit_and_loss(extracted: dict[str, Any]) -> list[ValidationCheck]:
+    extracted = _profit_and_loss_with_table_fallback(extracted)
     checks: list[ValidationCheck] = []
     checks += _period_formula_check(
         "total_income", "interest_earned + other_income = total_income",
@@ -256,7 +328,34 @@ def _profit_and_loss(extracted: dict[str, Any]) -> list[ValidationCheck]:
     return checks
 
 
+def _cash_flow_with_table_fallback(extracted: dict[str, Any]) -> dict[str, Any]:
+    """Bridge explicitly printed cash-flow table rows to canonical validator fields.
+
+    Like the P&L bridge, this only reuses values already extracted from the source
+    tables. It does not calculate, infer, or repair missing figures.
+    """
+    mapping = {
+        "operating_cash_flow": (("operating_cash_flow", "net_cash_flow_from_operating_activities"), ("net cash flow from operating activities", "net cash generated from operating activities", "net cash from operating activities")),
+        "investing_cash_flow": (("investing_cash_flow", "net_cash_flow_from_investing_activities"), ("net cash flow from investing activities", "net cash used in investing activities", "net cash from investing activities")),
+        "financing_cash_flow": (("financing_cash_flow", "net_cash_flow_from_financing_activities"), ("net cash flow from financing activities", "net cash generated from financing activities", "net cash from financing activities")),
+        "fx_adjustment": (("fx_adjustment", "translation_adjustment", "effect_of_exchange_rates"), ("effect of exchange rate changes on cash and cash equivalents", "effect of exchange rates on cash and cash equivalents", "fx adjustment", "translation adjustment")),
+        "net_increase_in_cash": (("net_change_in_cash", "net_increase_in_cash", "net_increase_in_cash_and_cash_equivalents"), ("net increase in cash and cash equivalents", "net increase in cash & cash equivalents", "net change in cash and cash equivalents")),
+        "opening_cash": (("opening_cash", "opening_cash_and_cash_equivalents"), ("cash and cash equivalents at beginning of year", "cash and cash equivalents at the beginning of year", "opening cash and cash equivalents")),
+        "cash_acquired_on_amalgamation": (("cash_acquired_on_amalgamation", "other_cash_adjustments", "other_adjustments"), ("cash and cash equivalents acquired on amalgamation", "cash acquired on amalgamation")),
+        "closing_cash": (("closing_cash", "closing_cash_and_cash_equivalents"), ("cash and cash equivalents at end of year", "cash and cash equivalents at the end of year", "closing cash and cash equivalents")),
+    }
+    bridged = dict(extracted)
+    for canonical, (field_aliases, row_aliases) in mapping.items():
+        if _raw(bridged, *field_aliases) is not None:
+            continue
+        value = _table_period_value(extracted, row_aliases)
+        if value is not None:
+            bridged[canonical] = {"value": value}
+    return bridged
+
+
 def _cash_flow(extracted: dict[str, Any]) -> list[ValidationCheck]:
+    extracted = _cash_flow_with_table_fallback(extracted)
     checks: list[ValidationCheck] = []
     checks += _period_formula_check(
         "net_increase_in_cash",

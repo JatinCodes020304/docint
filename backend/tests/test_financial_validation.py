@@ -151,3 +151,52 @@ def test_invoice_explicit_subtotal_is_preferred_over_total_for_item_sum():
     check = next(c for c in result["checks"] if c["name"] == "invoice_line_items_sum")
     assert check["status"] == "PASS"
     assert "target: subtotal" in check["formula"]
+
+
+def test_pnl_validator_uses_printed_table_rows_when_top_level_fields_are_missing():
+    extracted = {
+        "tables": [
+            {"name": "income", "columns": ["2024", "2023"], "rows": [
+                {"label": "Interest earned", "values": {"2024": 283649.02, "2023": 170754.05}},
+                {"label": "Other income", "values": {"2024": 124345.75, "2023": 33912.05}},
+                {"label": "Total Income", "values": {"2024": 407994.77, "2023": 204666.10}},
+            ]},
+            {"name": "expenditure", "columns": ["2024", "2023"], "rows": [
+                {"label": "Interest expended", "values": {"2024": 154138.55, "2023": 77779.94}},
+                {"label": "Operating expenses", "values": {"2024": 152269.34, "2023": 51533.69}},
+                {"label": "Provisions and contingencies", "values": {"2024": 36140.38, "2023": 29203.77}},
+                {"label": "Total Expenditure", "values": {"2024": 342548.27, "2023": 158517.40}},
+            ]},
+            {"name": "profit", "columns": ["2024", "2023"], "rows": [
+                {"label": "Consolidated Net Profit for the year before minorities’ interest", "values": {"2024": 65446.50, "2023": 46148.70}},
+                {"label": "Minority Interest", "values": {"2024": 1384.46, "2023": 151.59}},
+                {"label": "Consolidated Net Profit for the year attributable to the group", "values": {"2024": 64062.04, "2023": 45997.11}},
+            ]},
+        ]
+    }
+    result = validate_financials(extracted, "profit_and_loss")
+    by_name = {c["name"]: c for c in result["checks"]}
+    for prefix in ("total_income", "total_expenditure", "profit_before_minority", "profit_attributable_to_group"):
+        assert by_name[f"{prefix}_2024"]["status"] == "PASS"
+        assert by_name[f"{prefix}_2023"]["status"] == "PASS"
+
+
+def test_cash_flow_validator_uses_printed_table_rows_and_amalgamation_adjustment():
+    extracted = {
+        "tables": [{
+            "name": "cash_flow",
+            "columns": ["2025", "2024"],
+            "rows": [
+                {"label": "Net increase in cash and cash equivalents", "values": {"2025": 21113.39, "2024": 20504.99}},
+                {"label": "Cash and cash equivalents at beginning of year", "values": {"2025": 228834.51, "2024": 197147.81}},
+                {"label": "Cash and cash equivalents acquired on amalgamation", "values": {"2025": 0.0, "2024": 11181.71}},
+                {"label": "Cash and cash equivalents at end of year", "values": {"2025": 249947.90, "2024": 228834.51}},
+            ],
+        }]
+    }
+    result = validate_financials(extracted, "cash_flow_statement")
+    by_name = {c["name"]: c for c in result["checks"]}
+    assert by_name["closing_cash_2025"]["status"] == "PASS"
+    assert by_name["closing_cash_2024"]["status"] == "PASS"
+    assert by_name["closing_cash_2024"]["calculated_value"] == 228834.51
+    assert by_name["closing_cash_2024"]["reported_value"] == 228834.51
