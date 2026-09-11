@@ -1,0 +1,20 @@
+{
+  "document_name": "Consolidated Balance Sheet 2017.pdf",
+  "document_type": "balance_sheet",
+  "processing_status": "PASS",
+  "overall_confidence": null,
+  "file_validation": {"file_type": "application/pdf", "is_supported": true, "is_readable": true, "page_count": 1, "status": "PASS"},
+  "extracted_data": {
+    "header": {"company_name": {"value": "Sample Company Ltd", "evidence": {"source_text": "Sample Company Ltd", "page_number": 1}}, "statement_title": {"value": "Consolidated Balance Sheet", "evidence": {"source_text": "Consolidated Balance Sheet", "page_number": 1}}},
+    "periods": ["2017", "2016"],
+    "currency": {"value": "INR", "evidence": {"source_text": "Currency: INR", "page_number": 1}},
+    "financial_items": [
+      {"name": "Total Assets", "values_by_period": {"2017": 100000.00, "2016": 92000.00}, "evidence": {"source_text": "Total Assets 100000 92000", "page_number": 1}},
+      {"name": "Total Liabilities", "values_by_period": {"2017": 60000.00, "2016": 55000.00}, "evidence": {"source_text": "Total Liabilities 60000 55000", "page_number": 1}},
+      {"name": "Total Equity", "values_by_period": {"2017": 40000.00, "2016": 37000.00}, "evidence": {"source_text": "Total Equity 40000 37000", "page_number": 1}}
+    ],
+    "tables": []
+  },
+  "validation": {"checks": [{"name": "balance_sheet_identity_2017", "formula": "total_liabilities + total_equity", "operands": {"total_liabilities": 60000.00, "total_equity": 40000.00}, "calculated_value": 100000.00, "reported_value": 100000.00, "variance": 0.00, "status": "PASS"}], "overall_status": "PASS", "issues": []},
+  "processing_metadata": {"ocr_used": true, "processed_at": "2026-09-10T18:20:00Z", "processing_time_ms": 8000}
+}

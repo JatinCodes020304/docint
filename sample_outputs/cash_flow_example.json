@@ -1,0 +1,21 @@
+{
+  "document_name": "Consolidated Cash Flow 2018.pdf",
+  "document_type": "cash_flow_statement",
+  "processing_status": "PASS",
+  "overall_confidence": null,
+  "file_validation": {"file_type": "application/pdf", "is_supported": true, "is_readable": true, "page_count": 1, "status": "PASS"},
+  "extracted_data": {
+    "header": {"statement_title": {"value": "Consolidated Cash Flow Statement", "evidence": {"source_text": "Consolidated Cash Flow Statement", "page_number": 1}}},
+    "periods": ["2018"],
+    "currency": {"value": "INR", "evidence": {"source_text": "Amount in INR", "page_number": 1}},
+    "financial_items": [
+      {"name": "Operating Cash Flow", "values_by_period": {"2018": 30000.00}, "evidence": {"source_text": "Operating Cash Flow 30000", "page_number": 1}},
+      {"name": "Investing Cash Flow", "values_by_period": {"2018": -12000.00}, "evidence": {"source_text": "Investing Cash Flow (12000)", "page_number": 1}},
+      {"name": "Financing Cash Flow", "values_by_period": {"2018": 5000.00}, "evidence": {"source_text": "Financing Cash Flow 5000", "page_number": 1}},
+      {"name": "Net Increase in Cash", "values_by_period": {"2018": 23000.00}, "evidence": {"source_text": "Net Increase in Cash 23000", "page_number": 1}}
+    ],
+    "tables": []
+  },
+  "validation": {"checks": [{"name": "cash_flow_net_increase_2018", "formula": "operating + investing + financing + fx_adjustment", "operands": {"operating_cash_flow": 30000.00, "investing_cash_flow": -12000.00, "financing_cash_flow": 5000.00}, "calculated_value": 23000.00, "reported_value": 23000.00, "variance": 0.00, "status": "PASS"}], "overall_status": "PASS", "issues": []},
+  "processing_metadata": {"ocr_used": true, "processed_at": "2026-09-10T18:30:00Z", "processing_time_ms": 8500}
+}

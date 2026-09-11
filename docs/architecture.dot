@@ -1,0 +1,26 @@
+digraph G {
+  graph [rankdir=LR, bgcolor="white", pad="0.4", nodesep="0.55", ranksep="0.65"];
+  node [shape=rect, style="rounded,filled", fontname="Arial", fontsize=13, margin="0.15,0.10", color="#17564a", fillcolor="#e8f5ef", penwidth=1.5];
+  edge [color="#555555", arrowsize=0.8, penwidth=1.3, fontname="Arial", fontsize=10];
+
+  user [label="Evaluator / User\nBrowser"];
+  frontend [label="HTML/CSS/JS\nDashboard + Upload"];
+  api [label="FastAPI Backend\n/api/v1 routes + Swagger"];
+  validation [label="File Validation\nPDF/JPG/PNG, readable, <= 3 pages"];
+  ocr [label="Text Extraction / OCR\nNative PDF text, Poppler, Tesseract"];
+  llm [label="Groq Primary + Gemini Fallback\nJSON fields, tables, evidence"];
+  checks [label="Financial Validation\nPython deterministic checks"];
+  db [label="SQLite / Postgres\nStored latest result"];
+  result [label="Result UI + Raw JSON\nFields, tables, validations"];
+
+  user -> frontend;
+  frontend -> api [label="multipart upload"];
+  api -> validation;
+  validation -> ocr [label="PASS"];
+  ocr -> llm;
+  llm -> checks;
+  checks -> db;
+  db -> api [label="GET latest/list"];
+  api -> result;
+  result -> user;
+}

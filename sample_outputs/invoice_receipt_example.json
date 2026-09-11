@@ -1,0 +1,37 @@
+{
+  "document_name": "X51008142038.jpg",
+  "document_type": "invoice",
+  "processing_status": "PASS",
+  "overall_confidence": null,
+  "file_validation": {
+    "file_type": "image/jpeg",
+    "is_supported": true,
+    "is_readable": true,
+    "page_count": 1,
+    "status": "PASS"
+  },
+  "extracted_data": {
+    "invoice_number": {"value": null, "evidence": {"source_text": null, "page_number": null}, "page_number": null},
+    "invoice_date": {"value": null, "evidence": {"source_text": null, "page_number": null}, "page_number": null},
+    "vendor_name": {"value": null, "evidence": {"source_text": null, "page_number": null}, "page_number": null},
+    "customer_name": {"value": null, "evidence": {"source_text": null, "page_number": null}, "page_number": null},
+    "currency": {"value": null, "evidence": {"source_text": null, "page_number": null}, "page_number": null},
+    "subtotal": {"value": null, "evidence": {"source_text": null, "page_number": null}, "page_number": null},
+    "tax_amount": {"value": null, "evidence": {"source_text": null, "page_number": null}, "page_number": null},
+    "total_amount": {"value": null, "evidence": {"source_text": null, "page_number": null}, "page_number": null},
+    "line_items": [
+      {"description": "COKE LIGHT 500ML", "quantity": 2, "unit_price": 2.20, "amount": null, "tax_amount": null, "discount": null, "evidence": {"source_text": "COKE LIGHT 500ML 2 2.20", "page_number": 1}},
+      {"description": "SPRITZER MINERAL WATER", "quantity": null, "unit_price": null, "amount": null, "tax_amount": null, "discount": null, "evidence": {"source_text": "SPRITZER MINERAL WATER", "page_number": 1}}
+    ],
+    "tables": []
+  },
+  "validation": {
+    "checks": [
+      {"name": "line_item_1_quantity_x_unit_price", "formula": "quantity * unit_price", "operands": {"quantity": 2, "unit_price": 2.20}, "calculated_value": 4.40, "reported_value": null, "variance": null, "status": "NOT_APPLICABLE"},
+      {"name": "invoice_total_check", "formula": "subtotal + tax_amount - discount", "operands": {"subtotal": null, "tax_amount": null}, "calculated_value": null, "reported_value": null, "variance": null, "status": "NOT_APPLICABLE"}
+    ],
+    "overall_status": "NOT_APPLICABLE",
+    "issues": ["Some invoice header/total fields were missing or unreadable in OCR text."]
+  },
+  "processing_metadata": {"ocr_used": true, "processed_at": "2026-09-10T18:17:12Z", "processing_time_ms": 7114}
+}

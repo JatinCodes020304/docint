@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Upload — Document Intelligence</title>
+    <!--
+      This is the upload page. It is plain HTML: a form with a dropdown
+      (document type) and a file picker. upload.js handles the Process click.
+    -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/upload.html">
+        <svg class="brand-mark" viewBox="0 0 28 28" aria-hidden="true">
+          <rect x="4" y="3" width="16" height="22" rx="2.5" fill="#1f4e46" />
+          <path d="M20 8h4v14.5A2.5 2.5 0 0 1 21.5 25H20V8Z" fill="#173b35" />
+          <path d="M20 3v5h5l-5-5Z" fill="#c5d4d0" />
+          <rect x="8" y="11" width="8" height="1.5" rx="0.5" fill="#f4f3ef" />
+          <rect x="8" y="15" width="8" height="1.5" rx="0.5" fill="#f4f3ef" />
+          <rect x="8" y="19" width="5" height="1.5" rx="0.5" fill="#f4f3ef" />
+        </svg>
+        <span class="brand-text">Document Intelligence</span>
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/upload.html" aria-current="page">Upload</a>
+        <a href="/dashboard.html">Dashboard</a>
+      </nav>
+    </header>
+
+    <main class="page">
+      <header class="page-header">
+        <div>
+          <h1>Process a document</h1>
+          <p class="lede">
+            Choose a type, attach a PDF or image, then process.
+          </p>
+        </div>
+      </header>
+
+      <section class="card" aria-labelledby="upload-heading">
+        <h2 id="upload-heading">Upload</h2>
+
+        <!--
+          A real <form> gives us labels, keyboard support, and Enter-to-submit.
+          We stop the browser from actually posting anywhere (no backend yet)
+          and handle the click in JavaScript instead.
+        -->
+        <form id="upload-form" novalidate>
+          <div class="field">
+            <label for="document-type">Document type</label>
+            <select id="document-type" name="document_type" required>
+              <option value="invoice">Invoice</option>
+              <option value="balance_sheet">Balance sheet</option>
+              <option value="profit_and_loss">Profit & loss</option>
+              <option value="cash_flow_statement">Cash flow statement</option>
+            </select>
+            <p class="hint">Tells the (future) extractor which fields to look for.</p>
+          </div>
+
+          <div class="field">
+            <span class="label" id="file-label">File</span>
+            <label class="file-drop" for="file-input">
+              <input
+                id="file-input"
+                name="file"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                aria-labelledby="file-label"
+              />
+              <strong>Choose a PDF, JPG, or PNG</strong>
+              <span class="hint" id="file-hint">Click to browse · max 10 MB</span>
+              <span class="file-name" id="file-name"></span>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-primary" id="process-btn" type="submit">
+              Process
+            </button>
+          </div>
+        </form>
+
+        <!-- Hidden until JS shows a success or error -->
+        <div
+          class="alert alert-error"
+          id="error-alert"
+          role="alert"
+          style="margin-top: 16px"
+        ></div>
+        <div
+          class="alert alert-success"
+          id="success-alert"
+          role="status"
+          style="margin-top: 16px"
+        ></div>
+      </section>
+    </main>
+
+    <!--
+      Scripts at the bottom so the HTML exists before JS looks it up.
+      mock-data.js defines DocIntelAPI; upload.js talks to the form.
+    -->
+    
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/upload.js"></script>
+  </body>
+</html>

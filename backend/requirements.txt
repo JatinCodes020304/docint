@@ -1,0 +1,31 @@
+# --- Web framework ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9    # required by FastAPI to parse file uploads
+
+# --- Config ---
+python-dotenv==1.0.1
+
+# --- Database ---
+sqlalchemy==2.0.35
+
+# --- File validation (stage 1) ---
+pypdf==4.3.1                # PDF parsing / page counting / corruption checks
+Pillow==10.4.0              # image decoding / validation
+
+# --- OCR (stage 2, added next) ---
+pytesseract==0.3.13
+pdf2image==1.17.0
+opencv-python-headless>=4.10.0.84   # deskew + adaptive threshold preprocessing before Tesseract
+numpy>=1.26.4                       # array ops for the preprocessing step (unpinned: old exact pins have no prebuilt wheel for newer Python versions like 3.13 on Windows)
+
+# --- Gemini fallback LLM extraction ---
+google-genai>=1.0.0,<2.0.0
+
+# --- HTTP client for free-tier LLM / OCR.Space calls (stage 2/3) ---
+httpx==0.27.2
+
+# --- Testing ---
+pytest==8.3.3
+httpx==0.27.2
+reportlab==4.2.5           # used only in tests, to generate native-text PDFs
